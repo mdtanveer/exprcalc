@@ -1,0 +1,38 @@
+.App {
+  text-align: center;
+}
+
+.tabs button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.evaluator, .history {
+  margin-top: 20px;
+}
+
+.variables {
+  margin: 20px 0;
+}
+
+.result {
+  margin-top: 20px;
+  font-weight: bold;
+}
+
+.history ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.history li {
+  margin: 10px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.history li:hover {
+  text-decoration: underline;
+}
