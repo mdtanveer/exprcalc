@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
+import { Tab, Tabs, Button, Form, Container, Row, Col, ListGroup } from 'react-bootstrap';
 import './App.css';
 
 interface HistoryItem {
@@ -22,7 +23,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleExpressionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExpressionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const expr = e.target.value;
     setExpression(expr);
 
@@ -78,6 +79,17 @@ const App: React.FC = () => {
     setActiveTab('Evaluator');
   };
 
+  const handleRemoveFromHistory = (index: number) => {
+    const newHistory = history.filter((_, i) => i !== index);
+    setHistory(newHistory);
+    localStorage.setItem('expressionHistory', JSON.stringify(newHistory));
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('expressionHistory');
+  };
+
   const handleSave = () => {
     const data = {
       expression,
@@ -96,56 +108,56 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="App">
-      <h1>Math Expression Evaluator</h1>
-      <div className="tabs">
-        <button onClick={() => setActiveTab('Evaluator')}>Evaluator</button>
-        <button onClick={() => setActiveTab('History')}>History</button>
-      </div>
-      {activeTab === 'Evaluator' && (
-        <div className="evaluator">
-          <input
-            type="text"
-            value={expression}
-            onChange={handleExpressionChange}
-            placeholder="Enter expression"
-          />
+    <Container className="mt-4">
+      <h1 className="text-center">Math Expression Evaluator</h1>
+      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k as string)}>
+        <Tab eventKey="Evaluator" title="Evaluator">
+          <Form.Group className="mt-4">
+            <Form.Label>Expression</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={expression}
+              onChange={handleExpressionChange}
+              placeholder="Enter expression"
+            />
+          </Form.Group>
           <div className="variables">
             {Object.keys(variables).map((variable) => (
-              <div key={variable}>
-                <label>
-                  {variable}:
-                  <input
-                    type="number"
-                    name={variable}
-                    value={variables[variable]}
-                    onChange={handleVariableChange}
-                  />
-                </label>
-              </div>
+              <Form.Group key={variable}>
+                <Form.Label>{variable}:</Form.Label>
+                <Form.Control
+                  type="number"
+                  name={variable}
+                  value={variables[variable]}
+                  onChange={handleVariableChange}
+                />
+              </Form.Group>
             ))}
           </div>
-          <button onClick={handleCalculate}>Calculate</button>
-          <div className="result">
+          <Button className="mt-2" onClick={handleCalculate}>Calculate</Button>
+          <Button className="mt-2 ml-2" onClick={handleSave}>Save Expression</Button>
+          <Button className="mt-2 ml-2" onClick={handleLoad}>Load Expression</Button>
+          <div className="result mt-3">
             Result: {result}
           </div>
-          <button onClick={handleSave}>Save Expression</button>
-          <button onClick={handleLoad}>Load Expression</button>
-        </div>
-      )}
-      {activeTab === 'History' && (
-        <div className="history">
-          <h2>History</h2>
-          <ul>
+        </Tab>
+        <Tab eventKey="History" title="History">
+          <h2 className="mt-4">History</h2>
+          <ListGroup>
             {history.map((item, index) => (
-              <li key={index} onClick={() => handleLoadFromHistory(item)}>
-                {item.expression} - {JSON.stringify(item.variables)}
-              </li>
+              <ListGroup.Item key={index}>
+                <div onClick={() => handleLoadFromHistory(item)}>
+                  {item.expression} - {JSON.stringify(item.variables)}
+                </div>
+                <Button variant="danger" size="sm" className="float-right" onClick={() => handleRemoveFromHistory(index)}>Remove</Button>
+              </ListGroup.Item>
             ))}
-          </ul>
-        </div>
-      )}
-    </div>
+          </ListGroup>
+          <Button variant="danger" className="mt-3" onClick={handleClearHistory}>Clear History</Button>
+        </Tab>
+      </Tabs>
+    </Container>
   );
 };
 
