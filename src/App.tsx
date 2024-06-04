@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
-import { Tab, Tabs, Button, Form, Container, Row, Col, ListGroup } from 'react-bootstrap';
+import { Tab, Tabs, Button, Form, Container, ListGroup, Table } from 'react-bootstrap';
 import './App.css';
 
 interface HistoryItem {
@@ -10,7 +10,8 @@ interface HistoryItem {
 
 const App: React.FC = () => {
   const [expression, setExpression] = useState<string>('');
-  const [variables, setVariables] = useState<{ [key: string]: string }>({});
+  const [inputVariables, setInputVariables] = useState<{ [key: string]: string }>({});
+  const [outputVariables, setOutputVariables] = useState<{ [key: string]: number }>({});
   const [result, setResult] = useState<string | number>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Evaluator');
@@ -29,53 +30,95 @@ const App: React.FC = () => {
 
     // Extract variables from the expression
     try {
-      const parsed = Parser.parse(expr);
-      const vars = parsed.variables();
-      const newVariables = vars.reduce((acc, curr) => {
+      const assignments = expr.split(';');
+      const outputVars = new Set<string>();
+      const inputVars = new Set<string>();
+
+      assignments.forEach((assignment) => {
+        const [lhs, rhs] = assignment.split('=');
+        if (rhs) {
+          const parsedRhs = Parser.parse(rhs.trim());
+          const varsInRhs = parsedRhs.variables();
+          varsInRhs.forEach((v) => inputVars.add(v));
+          outputVars.add(lhs.trim());
+        } else {
+          const parsed = Parser.parse(lhs.trim());
+          const varsInExpr = parsed.variables();
+          varsInExpr.forEach((v) => inputVars.add(v));
+        }
+      });
+
+      outputVars.forEach((v) => inputVars.delete(v));
+
+      const newInputVariables = Array.from(inputVars).reduce((acc, curr) => {
         acc[curr] = '';
         return acc;
       }, {} as { [key: string]: string });
-      setVariables(newVariables);
+
+      setInputVariables(newInputVariables);
+      setOutputVariables({});
     } catch (error) {
-      setVariables({});
+      setInputVariables({});
+      setOutputVariables({});
     }
   };
 
   const handleVariableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setVariables({
-      ...variables,
+    setInputVariables({
+      ...inputVariables,
       [name]: value,
     });
   };
 
   const handleCalculate = () => {
     try {
-      const parsed = Parser.parse(expression);
-      const variableValues = Object.keys(variables).reduce((acc, key) => {
-        acc[key] = parseFloat(variables[key]);
+      const variableValues = Object.keys(inputVariables).reduce((acc, key) => {
+        acc[key] = parseFloat(inputVariables[key]);
         return acc;
       }, {} as { [key: string]: number });
 
-      const result = parsed.evaluate(variableValues);
-      setResult(result);
+      let exprResult = '';
+      const assignments = expression.split(';');
+      const newOutputVariables: { [key: string]: number } = {};
+
+      assignments.forEach((assignment) => {
+        if (assignment.includes('=')) {
+          const [lhs, rhs] = assignment.split('=');
+          const varName = lhs.trim();
+          const parsedRhs = Parser.parse(rhs.trim());
+          const value = parsedRhs.evaluate(variableValues);
+          variableValues[varName] = value;
+          newOutputVariables[varName] = value;
+          exprResult = value;
+        } else {
+          const parsed = Parser.parse(assignment.trim());
+          exprResult = parsed.evaluate(variableValues);
+        }
+      });
+
+      setResult(exprResult);
 
       const newHistoryItem: HistoryItem = {
         expression,
-        variables: { ...variables },
+        variables: { ...inputVariables },
       };
 
       const newHistory = [newHistoryItem, ...history].slice(0, 10);
       setHistory(newHistory);
       localStorage.setItem('expressionHistory', JSON.stringify(newHistory));
+
+      setOutputVariables(newOutputVariables);
     } catch (error) {
       setResult('Error');
+      setOutputVariables({});
     }
   };
 
   const handleLoadFromHistory = (item: HistoryItem) => {
     setExpression(item.expression);
-    setVariables(item.variables);
+    setInputVariables(item.variables);
+    setOutputVariables({});
     setActiveTab('Evaluator');
   };
 
@@ -93,7 +136,7 @@ const App: React.FC = () => {
   const handleSave = () => {
     const data = {
       expression,
-      variables,
+      variables: inputVariables,
     };
     localStorage.setItem('savedExpression', JSON.stringify(data));
   };
@@ -103,7 +146,7 @@ const App: React.FC = () => {
     if (savedData) {
       const { expression, variables } = JSON.parse(savedData);
       setExpression(expression);
-      setVariables(variables);
+      setInputVariables(variables);
     }
   };
 
@@ -123,13 +166,13 @@ const App: React.FC = () => {
             />
           </Form.Group>
           <div className="variables">
-            {Object.keys(variables).map((variable) => (
+            {Object.keys(inputVariables).map((variable) => (
               <Form.Group key={variable}>
                 <Form.Label>{variable}:</Form.Label>
                 <Form.Control
                   type="number"
                   name={variable}
-                  value={variables[variable]}
+                  value={inputVariables[variable]}
                   onChange={handleVariableChange}
                 />
               </Form.Group>
@@ -141,6 +184,24 @@ const App: React.FC = () => {
           <div className="result mt-3">
             Result: {result}
           </div>
+          {Object.keys(outputVariables).length > 0 && (
+            <Table striped bordered hover className="mt-3">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(outputVariables).map(([variable, value]) => (
+                  <tr key={variable}>
+                    <td>{variable}</td>
+                    <td>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </Tab>
         <Tab eventKey="History" title="History">
           <h2 className="mt-4">History</h2>
