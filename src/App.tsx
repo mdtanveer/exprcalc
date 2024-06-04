@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
-import { Tab, Tabs, Button, Form, Container, ListGroup, Table } from 'react-bootstrap';
+import { Tab, Tabs, Button, Form, Container, ListGroup, Table, ButtonGroup } from 'react-bootstrap';
 import './App.css';
 
 interface HistoryItem {
   expression: string;
   variables: { [key: string]: string };
+  pinned: boolean;
 }
 
 const App: React.FC = () => {
@@ -102,6 +103,7 @@ const App: React.FC = () => {
       const newHistoryItem: HistoryItem = {
         expression,
         variables: { ...inputVariables },
+        pinned: false,
       };
 
       const newHistory = [newHistoryItem, ...history].slice(0, 10);
@@ -150,9 +152,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePinToggle = (index: number) => {
+    const newHistory = [...history];
+    newHistory[index].pinned = !newHistory[index].pinned;
+    setHistory(newHistory);
+    localStorage.setItem('expressionHistory', JSON.stringify(newHistory));
+  };
+
+  const sortedHistory = [...history].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
   return (
-    <Container className="mt-4">
-      <h1 className="text-center">Math Expression Evaluator</h1>
+    <Container className="">
+      <h3 className="text-center mb-4">Formula Calculator</h3>
       <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k as string)}>
         <Tab eventKey="Evaluator" title="Evaluator">
           <Form.Group className="mt-4">
@@ -179,8 +190,8 @@ const App: React.FC = () => {
             ))}
           </div>
           <Button className="mt-2" onClick={handleCalculate}>Calculate</Button>
-          <Button className="mt-2 ml-2" onClick={handleSave}>Save Expression</Button>
-          <Button className="mt-2 ml-2" onClick={handleLoad}>Load Expression</Button>
+          <Button className="mt-2 ml-2" onClick={handleSave} hidden>Save Expression</Button>
+          <Button className="mt-2 ml-2" onClick={handleLoad} hidden>Load Expression</Button>
           <div className="result mt-3">
             Result: {result}
           </div>
@@ -206,12 +217,19 @@ const App: React.FC = () => {
         <Tab eventKey="History" title="History">
           <h2 className="mt-4">History</h2>
           <ListGroup>
-            {history.map((item, index) => (
+            {sortedHistory.map((item, index) => (
               <ListGroup.Item key={index}>
                 <div onClick={() => handleLoadFromHistory(item)}>
                   {item.expression} - {JSON.stringify(item.variables)}
                 </div>
-                <Button variant="danger" size="sm" className="float-right" onClick={() => handleRemoveFromHistory(index)}>Remove</Button>
+                <ButtonGroup className="float-right">
+                  <Button variant="secondary" size="sm" onClick={() => handlePinToggle(index)}>
+                    {item.pinned ? 'Unpin' : 'Pin'}
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleRemoveFromHistory(index)}>
+                    Remove
+                  </Button>
+                </ButtonGroup>
               </ListGroup.Item>
             ))}
           </ListGroup>
