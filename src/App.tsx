@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
 import { Tab, Tabs, Button, Form, Container, ListGroup, Table, ButtonGroup } from 'react-bootstrap';
+import { getTableClient } from './azureTableConfig';
 import './App.css';
 
 interface HistoryItem {
   expression: string;
   variables: { [key: string]: string };
   pinned: boolean;
+  name: string;
+  RowKey?: string;
+  PartitionKey?: string;
 }
 
 const App: React.FC = () => {
   const [expression, setExpression] = useState<string>('');
+  const [name, setName] = useState<string>('');
   const [inputVariables, setInputVariables] = useState<{ [key: string]: string }>({});
   const [outputVariables, setOutputVariables] = useState<{ [key: string]: number }>({});
   const [result, setResult] = useState<string | number>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [savedExpressions, setSavedExpressions] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Evaluator');
 
   useEffect(() => {
@@ -24,6 +30,23 @@ const App: React.FC = () => {
       setHistory(JSON.parse(storedHistory));
     }
   }, []);
+
+  const fetchSavedExpressions = async () => {
+    const tableClient = await getTableClient();
+    const entities = tableClient.listEntities<HistoryItem>();
+    const savedItems: HistoryItem[] = [];
+    for await (const entity of entities) {
+      savedItems.push({
+        expression: entity.expression,
+        variables: entity.variables,
+        pinned: entity.pinned,
+        name: entity.name,
+        RowKey: entity.RowKey,
+        PartitionKey: entity.PartitionKey,
+      });
+    }
+    setSavedExpressions(savedItems);
+  };
 
   const handleExpressionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const expr = e.target.value;
@@ -64,6 +87,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+
   const handleVariableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setInputVariables({
@@ -72,7 +99,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     try {
       const variableValues = Object.keys(inputVariables).reduce((acc, key) => {
         acc[key] = parseFloat(inputVariables[key]);
@@ -104,6 +131,9 @@ const App: React.FC = () => {
         expression,
         variables: { ...inputVariables },
         pinned: false,
+        name,
+        PartitionKey: 'Expressions',
+        RowKey: new Date().getTime().toString(),
       };
 
       const newHistory = [newHistoryItem, ...history].slice(0, 10);
@@ -112,7 +142,7 @@ const App: React.FC = () => {
 
       setOutputVariables(newOutputVariables);
     } catch (error) {
-      setResult('Error');
+      setResult('Error: '+error);
       setOutputVariables({});
     }
   };
@@ -120,6 +150,7 @@ const App: React.FC = () => {
   const handleLoadFromHistory = (item: HistoryItem) => {
     setExpression(item.expression);
     setInputVariables(item.variables);
+    setName(item.name);
     setOutputVariables({});
     setActiveTab('Evaluator');
   };
@@ -135,20 +166,25 @@ const App: React.FC = () => {
     localStorage.removeItem('expressionHistory');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const data = {
       expression,
-      variables: inputVariables,
+      //variables: inputVariables,
+      name,
+      PartitionKey: 'Expressions',
+      RowKey: new Date().getTime().toString(),
     };
-    localStorage.setItem('savedExpression', JSON.stringify(data));
+    const tableClient = await getTableClient();
+    await tableClient.createEntity(data);
   };
 
   const handleLoad = () => {
     const savedData = localStorage.getItem('savedExpression');
     if (savedData) {
-      const { expression, variables } = JSON.parse(savedData);
+      const { expression, variables, name } = JSON.parse(savedData);
       setExpression(expression);
       setInputVariables(variables);
+      setName(name);
     }
   };
 
@@ -162,22 +198,22 @@ const App: React.FC = () => {
   const sortedHistory = [...history].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
   return (
-    <Container className="">
-      <h3 className="text-center mb-4">Formula Calculator</h3>
-      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k as string)}>
+    <Container>
+      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'Evaluator')}>
         <Tab eventKey="Evaluator" title="Evaluator">
-          <Form.Group className="mt-4">
-            <Form.Label>Expression</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              value={expression}
-              onChange={handleExpressionChange}
-              placeholder="Enter expression"
-            />
-          </Form.Group>
-          <div className="variables">
-            {Object.keys(inputVariables).map((variable) => (
+          <Form>
+            <Form.Group>
+              <Form.Label>Expression</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={expression}
+                onChange={handleExpressionChange}
+              />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label>Variables</Form.Label>
+              {Object.keys(inputVariables).map((variable) => (
               <Form.Group key={variable}>
                 <Form.Label>{variable}:</Form.Label>
                 <Form.Control
@@ -187,14 +223,15 @@ const App: React.FC = () => {
                   onChange={handleVariableChange}
                 />
               </Form.Group>
-            ))}
-          </div>
-          <Button className="mt-2" onClick={handleCalculate}>Calculate</Button>
-          <Button className="mt-2 ml-2" onClick={handleSave} hidden>Save Expression</Button>
-          <Button className="mt-2 ml-2" onClick={handleLoad} hidden>Load Expression</Button>
-          <div className="result mt-3">
-            Result: {result}
-          </div>
+              ))}
+            </Form.Group>
+            <ButtonGroup className="mb-3">
+              <Button variant="primary" onClick={handleCalculate}>Calculate</Button>
+              <Button variant="secondary" onClick={handleSave}>Save</Button>
+            </ButtonGroup>
+          </Form>
+          <h3>Result: {result}</h3>
+          <h4>Output Variables</h4>
           {Object.keys(outputVariables).length > 0 && (
             <Table striped bordered hover className="mt-3">
               <thead>
@@ -215,25 +252,36 @@ const App: React.FC = () => {
           )}
         </Tab>
         <Tab eventKey="History" title="History">
-          <h2 className="mt-4">History</h2>
+          <Button variant="danger" onClick={handleClearHistory}>Clear History</Button>
           <ListGroup>
             {sortedHistory.map((item, index) => (
               <ListGroup.Item key={index}>
-                <div onClick={() => handleLoadFromHistory(item)}>
-                  {item.expression} - {JSON.stringify(item.variables)}
+                <div>
+                  <strong>{item.name}</strong>
+                  <p>{item.expression}</p>
+                  <Button variant="info" onClick={() => handleLoadFromHistory(item)}>Load</Button>
+                  <Button variant="danger" onClick={() => handleRemoveFromHistory(index)}>Remove</Button>
+                  <Button variant={item.pinned ? "warning" : "secondary"} onClick={() => handlePinToggle(index)}>
+                    {item.pinned ? "Unpin" : "Pin"}
+                  </Button>
                 </div>
-                <ButtonGroup className="float-right">
-                  <Button variant="secondary" size="sm" onClick={() => handlePinToggle(index)}>
-                    {item.pinned ? 'Unpin' : 'Pin'}
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleRemoveFromHistory(index)}>
-                    Remove
-                  </Button>
-                </ButtonGroup>
               </ListGroup.Item>
             ))}
           </ListGroup>
-          <Button variant="danger" className="mt-3" onClick={handleClearHistory}>Clear History</Button>
+        </Tab>
+        <Tab eventKey="SavedExpressions" title="Saved Expressions">
+          <Button variant="secondary" onClick={fetchSavedExpressions}>Refresh</Button>
+          <ListGroup>
+            {savedExpressions.map((item, index) => (
+              <ListGroup.Item key={index}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <p>{item.expression}</p>
+                  <Button variant="info" onClick={() => handleLoadFromHistory(item)}>Load</Button>
+                </div>
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
         </Tab>
       </Tabs>
     </Container>

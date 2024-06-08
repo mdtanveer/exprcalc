@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/data-tables": "^13.2.2",
+    "@azure/identity": "^4.2.0",
+    "@azure/msal-browser": "^3.16.0",
+    "@azure/msal-react": "^2.0.18",
     "bootstrap": "^5.3.3",
     "expr-eval": "^2.0.2",
     "react": "^18.2.0",
