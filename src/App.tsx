@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
-import { Tab, Tabs, Button, Form, Container, ListGroup, Table, ButtonGroup } from 'react-bootstrap';
+import { Tab, Tabs, Button, Form, Container, ListGroup, ButtonGroup } from 'react-bootstrap';
 import { getTableClient, msalInstance } from './azureTableConfig';
 import './App.css';
 
@@ -30,6 +30,10 @@ const App: React.FC = () => {
       setHistory(JSON.parse(storedHistory));
     }
   }, []);
+
+  useEffect(() => {
+    handleCalculateHelper();
+  }, [inputVariables])
 
   const fetchSavedExpressions = async () => {
     const tableClient = await getTableClient();
@@ -98,8 +102,9 @@ const App: React.FC = () => {
     });
   };
 
-  const handleCalculate = async () => {
+  const handleCalculateHelper = () => {
     try {
+
       const variableValues = Object.keys(inputVariables).reduce((acc, key) => {
         acc[key] = parseFloat(inputVariables[key]);
         return acc;
@@ -123,8 +128,17 @@ const App: React.FC = () => {
           exprResult = parsed.evaluate(variableValues);
         }
       });
-
       setResult(exprResult);
+      setOutputVariables(newOutputVariables);
+    } catch (error) {
+      setResult('Error: '+error);
+      setOutputVariables({});
+    }
+
+    };
+
+      const handleCalculate = () => {
+          handleCalculateHelper();
 
       const newHistoryItem: HistoryItem = {
         expression,
@@ -139,11 +153,6 @@ const App: React.FC = () => {
       setHistory(newHistory);
       localStorage.setItem('expressionHistory', JSON.stringify(newHistory));
 
-      setOutputVariables(newOutputVariables);
-    } catch (error) {
-      setResult('Error: '+error);
-      setOutputVariables({});
-    }
   };
 
   const handleLoadFromHistory = (item: HistoryItem) => {
@@ -178,13 +187,13 @@ const App: React.FC = () => {
   const handleSave = async () => {
     const data = {
       expression: expression,
-      variables: JSON.stringify(inputVariables),
+      variables: JSON.stringify(inputVariables, function(_k, v) { return v === undefined ? null : v; }),
       name: name,
       partitionKey: msalInstance.getAllAccounts()[0].localAccountId,
       rowKey: nameHashCode(name),
     };
     const tableClient = await getTableClient();
-    await tableClient.createEntity(data);
+    await tableClient.upsertEntity(data, "Replace");
   };
 
   const handlePinToggle = (index: number) => {
@@ -216,20 +225,24 @@ const App: React.FC = () => {
                 rows={3}
                 value={expression}
                 onChange={handleExpressionChange}
+                className='mb-4'
               />
             </Form.Group>
             <Form.Group>
               <Form.Label>Variables</Form.Label>
               {Object.keys(inputVariables).map((variable) => (
-              <Form.Group key={variable}>
-                <Form.Label>{variable}:</Form.Label>
+                <div className="container">
+              <Form.Group key={variable} className='row mb-2'>
+                <Form.Label className="col">{variable}:</Form.Label>
                 <Form.Control
                   type="search"
                   name={variable}
                   value={inputVariables[variable]}
                   onChange={handleVariableChange}
+                  className='col'
                 />
               </Form.Group>
+              </div>
               ))}
             </Form.Group>
             <ButtonGroup className="mb-3">
@@ -237,27 +250,32 @@ const App: React.FC = () => {
               <Button variant="secondary" onClick={handleSave}>Save</Button>
             </ButtonGroup>
           </Form>
-          <h3>Result: {result}</h3>
-          <h4>Output Variables</h4>
-          {Object.keys(outputVariables).length > 0 && (
-            <Table striped bordered hover className="mt-3">
-              <thead>
-                <tr>
-                  <th>Variable</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(outputVariables).map(([variable, value]) => (
-                  <tr key={variable}>
-                    <td>{variable}</td>
-                    <td>{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Tab>
+          <div className="container">
+              <Form.Group className='row mb-2'>
+                <Form.Label className="col">Result:</Form.Label>
+                <Form.Control
+                  value={result}
+                  className='col'
+                  readOnly
+                />
+              </Form.Group>
+              </div>
+          {Object.keys(outputVariables).map((variable) => (
+                <div className="container">
+              <Form.Group key={variable} className='row mb-2'>
+                <Form.Label className="col">{variable}:</Form.Label>
+                <Form.Control
+                  type="search"
+                  name={variable}
+                  value={outputVariables[variable]}
+                  onChange={handleVariableChange}
+                  className='col'
+                  readOnly
+                />
+              </Form.Group>
+              </div>
+              ))}
+         </Tab>
         <Tab eventKey="History" title="History">
           <Button variant="danger" onClick={handleClearHistory}>Clear History</Button>
           <ListGroup>
