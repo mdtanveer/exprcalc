@@ -9,8 +9,8 @@ interface HistoryItem {
   variables: string;
   pinned: boolean;
   name: string;
-  RowKey?: string;
-  PartitionKey?: string;
+  rowKey?: string;
+  partitionKey?: string;
 }
 
 const App: React.FC = () => {
@@ -41,8 +41,8 @@ const App: React.FC = () => {
         variables: entity.variables,
         pinned: entity.pinned,
         name: entity.name,
-        RowKey: entity.RowKey,
-        PartitionKey: entity.PartitionKey,
+        rowKey: entity.rowKey,
+        partitionKey: entity.partitionKey,
       });
     }
     setSavedExpressions(savedItems);
@@ -131,8 +131,8 @@ const App: React.FC = () => {
         variables: JSON.stringify({ ...inputVariables }),
         pinned: false,
         name,
-        PartitionKey: 'Expressions',
-        RowKey: new Date().getTime().toString(),
+        partitionKey: 'Expressions',
+        rowKey: new Date().getTime().toString(),
       };
 
       const newHistory = [newHistoryItem, ...history].slice(0, 10);
@@ -180,8 +180,8 @@ const App: React.FC = () => {
       expression: expression,
       variables: JSON.stringify(inputVariables),
       name: name,
-      PartitionKey: msalInstance.getAllAccounts()[0].localAccountId,
-      RowKey: nameHashCode(name),
+      partitionKey: msalInstance.getAllAccounts()[0].localAccountId,
+      rowKey: nameHashCode(name),
     };
     const tableClient = await getTableClient();
     await tableClient.createEntity(data);
