@@ -1,4 +1,4 @@
-import { PublicClientApplication, Configuration, AccountInfo } from "@azure/msal-browser";
+import { PublicClientApplication, Configuration } from "@azure/msal-browser";
 import { InteractiveBrowserCredential, TokenCredential } from "@azure/identity";
 import { TableClient } from "@azure/data-tables";
 
