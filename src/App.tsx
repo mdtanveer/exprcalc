@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Parser } from 'expr-eval';
 import { Tab, Tabs, Button, Form, Container, ListGroup, Table, ButtonGroup } from 'react-bootstrap';
-import { getTableClient } from './azureTableConfig';
+import { getTableClient, msalInstance } from './azureTableConfig';
 import './App.css';
 
 interface HistoryItem {
   expression: string;
-  variables: { [key: string]: string };
+  variables: string;
   pinned: boolean;
   name: string;
   RowKey?: string;
@@ -75,14 +75,13 @@ const App: React.FC = () => {
       outputVars.forEach((v) => inputVars.delete(v));
 
       const newInputVariables = Array.from(inputVars).reduce((acc, curr) => {
-        acc[curr] = '';
+        acc[curr] = inputVariables[curr];
         return acc;
       }, {} as { [key: string]: string });
 
       setInputVariables(newInputVariables);
       setOutputVariables({});
     } catch (error) {
-      setInputVariables({});
       setOutputVariables({});
     }
   };
@@ -129,7 +128,7 @@ const App: React.FC = () => {
 
       const newHistoryItem: HistoryItem = {
         expression,
-        variables: { ...inputVariables },
+        variables: JSON.stringify({ ...inputVariables }),
         pinned: false,
         name,
         PartitionKey: 'Expressions',
@@ -149,7 +148,7 @@ const App: React.FC = () => {
 
   const handleLoadFromHistory = (item: HistoryItem) => {
     setExpression(item.expression);
-    setInputVariables(item.variables);
+    setInputVariables(JSON.parse(item.variables));
     setName(item.name);
     setOutputVariables({});
     setActiveTab('Evaluator');
@@ -165,27 +164,27 @@ const App: React.FC = () => {
     setHistory([]);
     localStorage.removeItem('expressionHistory');
   };
+  
+  const nameHashCode = (str: String) => {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+        var char = str.charCodeAt(i);
+        hash = ((hash<<5)-hash)+char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString();
+  }
 
   const handleSave = async () => {
     const data = {
-      expression,
-      //variables: inputVariables,
-      name,
-      PartitionKey: 'Expressions',
-      RowKey: new Date().getTime().toString(),
+      expression: expression,
+      variables: JSON.stringify(inputVariables),
+      name: name,
+      PartitionKey: msalInstance.getAllAccounts()[0].localAccountId,
+      RowKey: nameHashCode(name),
     };
     const tableClient = await getTableClient();
     await tableClient.createEntity(data);
-  };
-
-  const handleLoad = () => {
-    const savedData = localStorage.getItem('savedExpression');
-    if (savedData) {
-      const { expression, variables, name } = JSON.parse(savedData);
-      setExpression(expression);
-      setInputVariables(variables);
-      setName(name);
-    }
   };
 
   const handlePinToggle = (index: number) => {
@@ -201,7 +200,15 @@ const App: React.FC = () => {
     <Container>
       <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'Evaluator')}>
         <Tab eventKey="Evaluator" title="Evaluator">
-          <Form>
+          <Form>           
+            <Form.Group>
+              <Form.Label>Name</Form.Label>
+              <Form.Control
+                type="text"
+                value={name}
+                onChange={handleNameChange}
+              />
+            </Form.Group>
             <Form.Group>
               <Form.Label>Expression</Form.Label>
               <Form.Control
@@ -217,7 +224,7 @@ const App: React.FC = () => {
               <Form.Group key={variable}>
                 <Form.Label>{variable}:</Form.Label>
                 <Form.Control
-                  type="number"
+                  type="search"
                   name={variable}
                   value={inputVariables[variable]}
                   onChange={handleVariableChange}

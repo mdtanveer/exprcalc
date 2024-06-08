@@ -13,7 +13,8 @@ const msalConfig: Configuration = {
   },
 };
 
-const msalInstance = new PublicClientApplication(msalConfig);
+export const msalInstance = new PublicClientApplication(msalConfig);
+await msalInstance.initialize();
 
 export async function getTokenCredential(): Promise<TokenCredential> {
   const accounts = msalInstance.getAllAccounts();
