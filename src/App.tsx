@@ -260,7 +260,9 @@ const App: React.FC = () => {
                 />
               </Form.Group>
               </div>
-          {Object.keys(outputVariables).map((variable) => (
+          {Object.keys(outputVariables)
+          .filter((variable) => {return variable.charAt(0) !== '$'})
+          .map((variable) => (
                 <div className="container">
               <Form.Group key={variable} className='row mb-2'>
                 <Form.Label className="col">{variable}:</Form.Label>
@@ -294,7 +296,7 @@ const App: React.FC = () => {
             ))}
           </ListGroup>
         </Tab>
-        <Tab eventKey="SavedExpressions" title="Saved Expressions">
+        <Tab eventKey="SavedExpressions" title="Saved">
           <Button variant="secondary" onClick={fetchSavedExpressions}>Refresh</Button>
           <ListGroup>
             {savedExpressions.map((item, index) => (
