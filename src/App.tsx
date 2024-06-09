@@ -285,7 +285,7 @@ const App: React.FC = () => {
               <ListGroup.Item key={index}>
                 <div>
                   <strong>{item.name}</strong>
-                  <p>{item.expression}</p>
+                  <p>{item.expression.slice(0,50)}</p>
                   <Button variant="info" onClick={() => handleLoadFromHistory(item)}>Load</Button>
                   <Button variant="danger" onClick={() => handleRemoveFromHistory(index)}>Remove</Button>
                   <Button variant={item.pinned ? "warning" : "secondary"} onClick={() => handlePinToggle(index)}>
@@ -296,14 +296,14 @@ const App: React.FC = () => {
             ))}
           </ListGroup>
         </Tab>
-        <Tab eventKey="SavedExpressions" title="Saved">
+        <Tab eventKey="SavedExpressions" title="Saved Expressions">
           <Button variant="secondary" onClick={fetchSavedExpressions}>Refresh</Button>
           <ListGroup>
             {savedExpressions.map((item, index) => (
               <ListGroup.Item key={index}>
                 <div>
                   <strong>{item.name}</strong>
-                  <p>{item.expression}</p>
+                  <p>{item.expression.slice(0,50)}</p>
                   <Button variant="info" onClick={() => handleLoadFromHistory(item)}>Load</Button>
                 </div>
               </ListGroup.Item>
