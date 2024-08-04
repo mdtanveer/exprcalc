@@ -291,7 +291,7 @@ const App: React.FC = () => {
               <Form.Group className='row mb-2'>
                 <Form.Label className="col">Result:</Form.Label>
                 <Form.Control
-                  value={result}
+                  value={typeof(result) == "number"? result?.toFixed(2): result}
                   className='col'
                   readOnly
                 />
@@ -306,7 +306,7 @@ const App: React.FC = () => {
                 <Form.Control
                   type="search"
                   name={variable}
-                  value={outputVariables[variable]}
+                  value={outputVariables[variable]?.toFixed(2)}
                   onChange={handleVariableChange}
                   className='col'
                   readOnly
