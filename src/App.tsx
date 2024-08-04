@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [expression, setExpression] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [inputVariables, setInputVariables] = useState<{ [key: string]: string }>({});
+  const [variableAliases, setVariableAliases] = useState<{ [key: string]: string }>({});
   const [outputVariables, setOutputVariables] = useState<{ [key: string]: number }>({});
   const [result, setResult] = useState<string | number>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -58,9 +59,20 @@ const App: React.FC = () => {
 
     // Extract variables from the expression
     try {
-      const assignments = expr.split(';');
+      const aliases = expr.split('\n').filter((line) => { return line.startsWith("//"); });
+      const noncomment_expr = expr.split('\n').filter((line) => { return !line.startsWith("//"); }).join("\n");
+      const assignments = noncomment_expr.split(';');
       const outputVars = new Set<string>();
       const inputVars = new Set<string>();
+
+      const aliasDict : { [key: string]: string } = {};
+      aliases.forEach((alias) => {
+        try {
+        const [lhs, rhs] = alias.split(':');
+        aliasDict[lhs.substring(2).trim()] = rhs.trim();
+        }
+        catch(error){}
+      });
 
       assignments.forEach((assignment) => {
         const [lhs, rhs] = assignment.split('=');
@@ -85,6 +97,7 @@ const App: React.FC = () => {
 
       setInputVariables(newInputVariables);
       setOutputVariables({});
+      setVariableAliases(aliasDict);
     } catch (error) {
       setOutputVariables({});
     }
@@ -111,8 +124,21 @@ const App: React.FC = () => {
       }, {} as { [key: string]: number });
 
       let exprResult = '';
-      const assignments = expression.split(';');
+      const aliases = expression.split('\n').filter((line) => { return line.startsWith("//"); });
+      const noncomment_expr = expression.split('\n').filter((line) => { return !line.startsWith("//"); }).join("\n");
+
+      const assignments = noncomment_expr.split(';');
       const newOutputVariables: { [key: string]: number } = {};
+      
+      const aliasDict : { [key: string]: string } = {};
+      aliases.forEach((alias) => {
+        try {
+          const [lhs, rhs] = alias.split(':');
+          aliasDict[lhs.substring(2).trim()] = rhs.trim();
+        }
+        catch(error){}
+      });
+
 
       assignments.forEach((assignment) => {
         if (assignment.includes('=')) {
@@ -130,9 +156,11 @@ const App: React.FC = () => {
       });
       setResult(exprResult);
       setOutputVariables(newOutputVariables);
+      setVariableAliases(aliasDict);
     } catch (error) {
       setResult('Error: '+error);
       setOutputVariables({});
+      setVariableAliases({});
     }
 
     };
@@ -205,6 +233,15 @@ const App: React.FC = () => {
 
   const sortedHistory = [...history].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
+  const renderVariableName = (variable: string) => {
+    if (variableAliases[variable]) {
+      return variableAliases[variable] + " (" + variable + ")";
+    }
+    else {
+      return variable;
+    }
+  }
+
   return (
     <Container>
       <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'Evaluator')}>
@@ -233,7 +270,7 @@ const App: React.FC = () => {
               {Object.keys(inputVariables).map((variable) => (
                 <div className="container">
               <Form.Group key={variable} className='row mb-2'>
-                <Form.Label className="col">{variable}:</Form.Label>
+                <Form.Label className="col">{renderVariableName(variable)}:</Form.Label>
                 <Form.Control
                   type="search"
                   name={variable}
@@ -265,7 +302,7 @@ const App: React.FC = () => {
           .map((variable) => (
                 <div className="container">
               <Form.Group key={variable} className='row mb-2'>
-                <Form.Label className="col">{variable}:</Form.Label>
+                <Form.Label className="col">{renderVariableName(variable)}:</Form.Label>
                 <Form.Control
                   type="search"
                   name={variable}
@@ -285,7 +322,7 @@ const App: React.FC = () => {
               <ListGroup.Item key={index}>
                 <div>
                   <strong>{item.name}</strong>
-                  <p>{item.expression.slice(0,50)}</p>
+                  <p>{item.expression?.slice(0,50)}</p>
                   <Button variant="info" onClick={() => handleLoadFromHistory(item)}>Load</Button>
                   <Button variant="danger" onClick={() => handleRemoveFromHistory(index)}>Remove</Button>
                   <Button variant={item.pinned ? "warning" : "secondary"} onClick={() => handlePinToggle(index)}>
