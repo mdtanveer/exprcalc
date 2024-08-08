@@ -23,6 +23,27 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [savedExpressions, setSavedExpressions] = useState<HistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Evaluator');
+  const _parser = new Parser();
+
+  const sum = function(arr: Array) {
+    try{
+      return arr.reduce((a, b) => a + b, 0);
+    }
+    catch(error){
+      return 0;
+    }
+  }
+
+  _parser.functions.sum = sum;
+
+  _parser.functions.avg = function(arr: Array) {
+    try{
+      return sum(arr)/arr.length;
+    }
+    catch(error){
+      return 0;
+    }
+}
 
   useEffect(() => {
     // Load history from local storage
@@ -77,12 +98,12 @@ const App: React.FC = () => {
       assignments.forEach((assignment) => {
         const [lhs, rhs] = assignment.split('=');
         if (rhs) {
-          const parsedRhs = Parser.parse(rhs.trim());
+          const parsedRhs = _parser.parse(rhs.trim());
           const varsInRhs = parsedRhs.variables();
           varsInRhs.forEach((v) => inputVars.add(v));
           outputVars.add(lhs.trim());
         } else {
-          const parsed = Parser.parse(lhs.trim());
+          const parsed = _parser.parse(lhs.trim());
           const varsInExpr = parsed.variables();
           varsInExpr.forEach((v) => inputVars.add(v));
         }
@@ -119,7 +140,7 @@ const App: React.FC = () => {
     try {
 
       const variableValues = Object.keys(inputVariables).reduce((acc, key) => {
-        acc[key] = typeof(inputVariables[key])=="number" ? parseFloat(inputVariables[key]) : Parser.evaluate(inputVariables[key]);
+        acc[key] = typeof(inputVariables[key])=="number" ? parseFloat(inputVariables[key]) : _parser.evaluate(inputVariables[key]);
         return acc;
       }, {} as { [key: string]: number });
 
@@ -145,7 +166,7 @@ const App: React.FC = () => {
           const [lhs, rhs] = assignment.split('=');
           const varName = lhs.trim();
           if(!varName.endsWith(")")) {
-            const parsedRhs = Parser.parse(rhs.trim());
+            const parsedRhs = _parser.parse(rhs.trim());
             const value = parsedRhs.evaluate(variableValues);
             variableValues[varName] = value;
             newOutputVariables[varName] = value;
@@ -153,7 +174,7 @@ const App: React.FC = () => {
         }
 
         } else {
-          const parsed = Parser.parse(assignment.trim());
+          const parsed = _parser.parse(assignment.trim());
           exprResult = parsed.evaluate(variableValues);
         }
       });
