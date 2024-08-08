@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const [name, setName] = useState<string>('');
   const [inputVariables, setInputVariables] = useState<{ [key: string]: string }>({});
   const [variableAliases, setVariableAliases] = useState<{ [key: string]: string }>({});
-  const [outputVariables, setOutputVariables] = useState<{ [key: string]: number }>({});
+  const [outputVariables, setOutputVariables] = useState<{ [key: string]: string | number }>({});
   const [result, setResult] = useState<string | number>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [savedExpressions, setSavedExpressions] = useState<HistoryItem[]>([]);
@@ -119,7 +119,7 @@ const App: React.FC = () => {
     try {
 
       const variableValues = Object.keys(inputVariables).reduce((acc, key) => {
-        acc[key] = parseFloat(inputVariables[key]);
+        acc[key] = typeof(inputVariables[key])=="number" ? parseFloat(inputVariables[key]) : Parser.evaluate(inputVariables[key]);
         return acc;
       }, {} as { [key: string]: number });
 
@@ -144,11 +144,14 @@ const App: React.FC = () => {
         if (assignment.includes('=')) {
           const [lhs, rhs] = assignment.split('=');
           const varName = lhs.trim();
-          const parsedRhs = Parser.parse(rhs.trim());
-          const value = parsedRhs.evaluate(variableValues);
-          variableValues[varName] = value;
-          newOutputVariables[varName] = value;
-          exprResult = value;
+          if(!varName.endsWith(")")) {
+            const parsedRhs = Parser.parse(rhs.trim());
+            const value = parsedRhs.evaluate(variableValues);
+            variableValues[varName] = value;
+            newOutputVariables[varName] = value;
+            exprResult = value;
+        }
+
         } else {
           const parsed = Parser.parse(assignment.trim());
           exprResult = parsed.evaluate(variableValues);
@@ -291,7 +294,7 @@ const App: React.FC = () => {
               <Form.Group className='row mb-2'>
                 <Form.Label className="col">Result:</Form.Label>
                 <Form.Control
-                  value={typeof(result) == "number"? result?.toFixed(2): result}
+                  value={typeof(result) == "number" && !Number.isInteger(result)? result?.toFixed(2): result}
                   className='col'
                   readOnly
                 />
@@ -306,7 +309,8 @@ const App: React.FC = () => {
                 <Form.Control
                   type="search"
                   name={variable}
-                  value={outputVariables[variable]?.toFixed(2)}
+                  value={typeof(outputVariables[variable]) == "number" && !Number.isInteger(outputVariables[variable])?
+                    outputVariables[variable].toFixed(2): outputVariables[variable]}
                   onChange={handleVariableChange}
                   className='col'
                   readOnly
