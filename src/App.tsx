@@ -39,9 +39,9 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("Evaluator");
   const _parser = new Parser();
 
-  const sum = function (arr: Array) {
+  const sum = function (arr: Array<number>) {
     try {
-      return arr.reduce((a, b) => a + b, 0);
+      return arr.reduce((a: number, b: number) => a + b, 0);
     } catch (error) {
       return 0;
     }
@@ -49,7 +49,7 @@ const App: React.FC = () => {
 
   _parser.functions.sum = sum;
 
-  _parser.functions.avg = function (arr: Array) {
+  _parser.functions.avg = function (arr: Array<number>) {
     try {
       return sum(arr) / arr.length;
     } catch (error) {
