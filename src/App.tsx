@@ -8,6 +8,8 @@ import {
   Container,
   ListGroup,
   ButtonGroup,
+  Row,
+  Col,
 } from "react-bootstrap";
 import { getTableClient, msalInstance } from "./azureTableConfig";
 import "./App.css";
@@ -294,155 +296,154 @@ const App: React.FC = () => {
   };
 
   return (
-    <Container>
-      <Tabs
-        activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k || "Evaluator")}
-      >
-        <Tab eventKey="Evaluator" title="Evaluator">
-          <Form>
-            <Form.Group>
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={name}
-                onChange={handleNameChange}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Expression</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={expression}
-                onChange={handleExpressionChange}
-                className="mb-4"
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Variables</Form.Label>
-              {Object.keys(inputVariables).map((variable) => (
-                <div className="container">
-                  <Form.Group key={variable} className="row mb-2">
-                    <Form.Label className="col">
-                      {renderVariableName(variable)}:
-                    </Form.Label>
+    <Container fluid className="d-flex justify-content-center">
+      <div className="w-100" style={{ maxWidth: "100%", padding: "1rem" }}>
+        <Row className="justify-content-center">
+          <Col xs={12} md={10} lg={8} xl={6}>
+            {" "}
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(k) => setActiveTab(k || "Evaluator")}
+            >
+              <Tab eventKey="Evaluator" title="Evaluator">
+                <Form>
+                  <Form.Group>
+                    <Form.Label>Name</Form.Label>
                     <Form.Control
-                      type="search"
-                      name={variable}
-                      value={inputVariables[variable]}
-                      onChange={handleVariableChange}
-                      className="col"
+                      type="text"
+                      value={name}
+                      onChange={handleNameChange}
                     />
                   </Form.Group>
-                </div>
-              ))}
-            </Form.Group>
-            <ButtonGroup className="mb-3">
-              <Button variant="primary" onClick={handleCalculate}>
-                Calculate
-              </Button>
-              <Button variant="secondary" onClick={handleSave}>
-                Save
-              </Button>
-            </ButtonGroup>
-          </Form>
-          <div className="container">
-            <Form.Group className="row mb-2">
-              <Form.Label className="col">Result:</Form.Label>
-              <Form.Control
-                value={
-                  typeof result == "number" && !Number.isInteger(result)
-                    ? result?.toFixed(2)
-                    : result
-                }
-                className="col"
-                readOnly
-              />
-            </Form.Group>
-          </div>
-          {Object.keys(outputVariables)
-            .filter((variable) => {
-              return variable.charAt(0) !== "$";
-            })
-            .map((variable) => (
-              <div className="container">
-                <Form.Group key={variable} className="row mb-2">
-                  <Form.Label className="col">
-                    {renderVariableName(variable)}:
-                  </Form.Label>
+                  <Form.Group>
+                    <Form.Label>Expression</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={5}
+                      value={expression}
+                      onChange={handleExpressionChange}
+                      className="mb-4"
+                    />
+                  </Form.Group>
+                  <Form.Group>
+                    <Form.Label>Variables</Form.Label>
+                    {Object.keys(inputVariables).map((variable) => (
+                      <Form.Group key={variable} className="row mb-2">
+                        <Form.Label className="col">
+                          {renderVariableName(variable)}:
+                        </Form.Label>
+                        <Form.Control
+                          name={variable}
+                          value={inputVariables[variable]}
+                          onChange={handleVariableChange}
+                          className="col text-end"
+                        />
+                      </Form.Group>
+                    ))}
+                  </Form.Group>
+                  <ButtonGroup className="mb-3">
+                    <Button variant="primary" onClick={handleCalculate}>
+                      Calculate
+                    </Button>
+                    <Button variant="secondary" onClick={handleSave}>
+                      Save
+                    </Button>
+                  </ButtonGroup>
+                </Form>
+                <Form.Group className="row mb-2">
+                  <Form.Label className="col">Result:</Form.Label>
                   <Form.Control
-                    type="search"
-                    name={variable}
                     value={
-                      typeof outputVariables[variable] == "number" &&
-                      !Number.isInteger(outputVariables[variable])
-                        ? outputVariables[variable].toFixed(2)
-                        : outputVariables[variable]
+                      typeof result == "number" && !Number.isInteger(result)
+                        ? result?.toFixed(2)
+                        : result
                     }
-                    onChange={handleVariableChange}
-                    className="col"
+                    className="col text-end"
                     readOnly
                   />
                 </Form.Group>
-              </div>
-            ))}
-        </Tab>
-        <Tab eventKey="History" title="History">
-          <Button variant="danger" onClick={handleClearHistory}>
-            Clear History
-          </Button>
-          <ListGroup>
-            {sortedHistory.map((item, index) => (
-              <ListGroup.Item key={index}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <p>{item.expression?.slice(0, 50)}</p>
-                  <Button
-                    variant="info"
-                    onClick={() => handleLoadFromHistory(item)}
-                  >
-                    Load
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleRemoveFromHistory(index)}
-                  >
-                    Remove
-                  </Button>
-                  <Button
-                    variant={item.pinned ? "warning" : "secondary"}
-                    onClick={() => handlePinToggle(index)}
-                  >
-                    {item.pinned ? "Unpin" : "Pin"}
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
-        </Tab>
-        <Tab eventKey="SavedExpressions" title="Saved Expressions">
-          <Button variant="secondary" onClick={fetchSavedExpressions}>
-            Refresh
-          </Button>
-          <ListGroup>
-            {savedExpressions.map((item, index) => (
-              <ListGroup.Item key={index}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <p>{item.expression.slice(0, 50)}</p>
-                  <Button
-                    variant="info"
-                    onClick={() => handleLoadFromHistory(item)}
-                  >
-                    Load
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
-        </Tab>
-      </Tabs>
+                {Object.keys(outputVariables)
+                  .filter((variable) => {
+                    return variable.charAt(0) !== "$";
+                  })
+                  .map((variable) => (
+                    <Form.Group key={variable} className="row mb-2">
+                      <Form.Label className="col">
+                        {renderVariableName(variable)}:
+                      </Form.Label>
+                      <Form.Control
+                        name={variable}
+                        value={
+                          typeof outputVariables[variable] == "number" &&
+                          !Number.isInteger(outputVariables[variable])
+                            ? outputVariables[variable].toFixed(2)
+                            : outputVariables[variable]
+                        }
+                        onChange={handleVariableChange}
+                        className="col text-end"
+                        readOnly
+                      />
+                    </Form.Group>
+                  ))}
+              </Tab>
+              <Tab eventKey="History" title="History">
+                <Button variant="danger" onClick={handleClearHistory}>
+                  Clear History
+                </Button>
+                <ListGroup>
+                  {sortedHistory.map((item, index) => (
+                    <ListGroup.Item key={index}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <p>{item.expression?.slice(0, 50)}</p>
+                        <Button
+                          variant="info"
+                          onClick={() => handleLoadFromHistory(item)}
+                        >
+                          Load
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleRemoveFromHistory(index)}
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          variant={item.pinned ? "warning" : "secondary"}
+                          onClick={() => handlePinToggle(index)}
+                        >
+                          {item.pinned ? "Unpin" : "Pin"}
+                        </Button>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </Tab>
+              <Tab eventKey="SavedExpressions" title="Saved Expressions">
+                <Button variant="secondary" onClick={fetchSavedExpressions}>
+                  Refresh
+                </Button>
+                <ListGroup>
+                  {savedExpressions.map((item, index) => (
+                    <ListGroup.Item key={index}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <p>{item.expression.slice(0, 50)}</p>
+                        <Button
+                          variant="info"
+                          onClick={() => handleLoadFromHistory(item)}
+                        >
+                          Load
+                        </Button>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </Tab>
+            </Tabs>
+          </Col>
+        </Row>
+      </div>
     </Container>
   );
 };
